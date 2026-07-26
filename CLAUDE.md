@@ -353,8 +353,10 @@ moves it out of the singleton set, weakening the SDR propagator. Assert on this.
 
 Phase 0 and Phase 1 are done and validated in Excel across Gr10–12 for both
 years (2025 workbook pending the grade-type fix above). `TT<year>.xlsx` is built
-in qualification format. The exception rule is explicit. Phase 2 is designed and
-**unblocked** at single-grade scope; starting with Grade 12.
+in qualification format. The exception rule is explicit. Phase 2 is in progress
+in code (`section.py`): 2.0/2.1/2.3(basket half) done and verified against
+2026 Gr10–12 fixtures (zero SDR violations); 2.2 and 2.3's teacher half remain
+blocked on `TT<year>.xlsx` pool regen.
 
 Python work in progress (PyCharm, Python 3.11, venv; user writes all code —
 guided-coding mode). Done and verified against fixtures:
@@ -384,6 +386,46 @@ guided-coding mode). Done and verified against fixtures:
   yet for `enrol`/`floors`/`baskets`/`getM` — still eyeballed only, not
   committed as a fixture.
 
+Phase 2 (module is `section.py`, not `sections.py`) — in progress:
+* `Section` dataclass (mutable, not frozen — `dom` and later `column`/`teacherId`
+  mutate across phases): `subject: str, gr: int, idx: int, m: int,
+  students: frozenset[int] | None, dom: int = 0xFF` (bitmask, bit i = column i
+  A..H still legal).
+* `build_sections(students, gr) -> list[Section]` (2.0) — done, verified by
+  eyeball. One `Section` per `idx` in `range(floor)` per subject. Floor-1
+  subjects get their real `students` set from `enrol`; floor-≥2 subjects get
+  `students=None` — **student-to-section split is still the open question
+  below, deliberately deferred, not a bug.**
+* `constants.BAND = frozenset({"MA","PE","LO","ML"})` added alongside
+  `UNIVERSAL`.
+* `pin_universal(sections)` (2.1) — done. Fixed column layout (symmetry spent
+  once, per "Symmetry is spent once" above): `EN` → col 0 alone; `BAND` → cols
+  1–2; everything else → cols 3–7 (5 choice cols). Uses `sec.dom &=` plus an
+  assert the pin never empties a domain.
+* `try_match` / `basket_sdr` (2.3, **basket-SDR half only**) — done. Classic
+  Kuhn's-algorithm augmenting-path bipartite matching, subjects → columns,
+  scoped per basket. Returns the matching (`dict[col, subject]`) or `None` if
+  no SDR exists (Hall violated) for that basket.
+* `check_baskets(students, gr, sections)` (2.4 data, no formatting wrapper
+  yet) — done. Loops every distinct basket via `roster.baskets`, runs
+  `basket_sdr`, collects `(subjects, student_ids)` for any basket with no
+  valid SDR. **Verified: zero violations on 2026 Gr10, Gr11, Gr12** — every
+  basket has enough legal columns between its subjects, given current domains.
+* **What this check does and does not prove:** each basket is checked in
+  isolation, so passing all baskets is necessary but not sufficient for a
+  single simultaneous 8-column schedule — it does not account for baskets
+  competing for the same columns at once. A basket failing here would be a
+  hard proof of infeasibility (Phase 3 could never succeed regardless); a
+  basket passing is a fast pre-filter, not a full feasibility proof. Global
+  feasibility is still Phase 3's job (CP-SAT `col[section]`).
+* **Not yet done / blocked:**
+  * 2.2 anchor-teacher pin — blocked on `TT<year>.xlsx` pool regen
+    (Provisional data, per Corrections item 4 / Open questions).
+  * 2.3's other half (alternating teacher-exclusivity propagation with basket
+    SDR to fixpoint) — blocked on the same anchor-pin dependency.
+  * 2.4 formatted reporting — the violation data exists (`check_baskets`
+    return value); no print/message wrapper written yet.
+
 Phases 3–5 have been explored analytically (CP-SAT timings, model shape,
 repair strategy) — see `docs/explorations/`. **Nothing beyond Phase 2 exists
 as code**; do not treat exploration results as implemented behaviour.
@@ -410,13 +452,17 @@ Next concrete steps, in order:
 5. ~~`getM(subject, grade)` in `constants.py`~~ — **done**: written, raises on
    unknown code, verified (see Current state above). `sections.py`'s
    dependencies (`floors` + `getM`) are now both satisfied.
-6. `sections.py` (Section materialisation, 2.0) — **next up**. Open question
-   raised but not resolved this session: for a floor-≥2 subject, how students
-   split across parallel sections (`idx` 0..floor-1) is undecided — ties into
-   the existing "Student-to-section assignment is undecided at Phase 2" open
-   question below. Decide this before or while writing `sections.py`.
-7. `tt_loader.py` (teacher qualifications) — needs `existence` from step above;
-   no code yet.
+6. ~~`section.py` (Section materialisation 2.0, universal-block pin 2.1,
+   basket-SDR check 2.3/2.4 data)~~ — **done**: see Current state above.
+   Student-to-section split for floor-≥2 subjects remains the open question
+   below — still deliberately deferred, `students=None`.
+7. `check_baskets` formatted reporting (finish 2.4) — small: wrap the existing
+   violation list in a print/message, e.g. `f"basket {subjects} (students
+   {ids}) has no valid column SDR"`. Nothing currently exercises the failure
+   path (0 violations on real fixtures), so this is untested against a real
+   Hall violation.
+8. `tt_loader.py` (teacher qualifications) — needs `existence` from `roster.py`
+   (already available); no code yet. Also unblocks 2.2/2.3's teacher half.
 
 Remaining Phase 2 dependency: regenerate workbook pool sizes from `TT<year>.xlsx`
 before the anchor ranking (2.2) means anything.
