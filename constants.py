@@ -1,0 +1,1 @@
+CLASS_CAP = 25
