@@ -1,0 +1,15 @@
+# Sensitive raw student/teacher data — contains real names, must never be
+# committed. Phase01_<year>.xlsx are NOT covered by this rule: they carry
+# only Id/Grade/subject codes (no names), are derived/anonymised working
+# fixtures, and are meant to be tracked (see CLAUDE.md/PLAN.md — the
+# workbook is the spec and the test fixture).
+/data/
+
+# Excel lock files
+~$*.xlsx
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

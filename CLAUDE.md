@@ -7,7 +7,22 @@ understood, so the rule is: **nothing goes into code until it has been checked
 against real data and is small enough to verify by hand.**
 
 Companion docs: **PRODUCT.md** (what done looks like) and **PLAN.md** (how to
-build it). This file is the record of what is *established* and what is *open*.
+build it). Analytical deep-dives that haven't earned a place in PLAN.md or
+code yet live in **docs/explorations/** — each flagged EXPLORED, NOT
+IMPLEMENTED; promote a finding here only once it's implemented and tested.
+This file is the record of what is *established* and what is *open*. **A
+fact is not established until it is committed here** — chat-side memory is
+scratch.
+
+## Relationship to other projects
+
+**TimeEduSuite (C++/Qt: TimeEditor, TimeVerify, TimeView, TimePyBling) is a
+separate, ongoing production track.** This project is a fresh, model-first
+attack on the same problem with different tools (Python + OR-Tools CP-SAT)
+and deliberately does not reference the suite's code or schemas. The only
+import is the *concept* of `ClashDetector` as an independent verifier
+sharing no code with the solver. Do not pull suite context into this
+project.
 
 ## Provenance of every fact below
 
@@ -72,6 +87,22 @@ Three tiers. Do not conflate them.
 4. **Teacher "pool" numbers in the original planning table were whole-school**,
    not per-grade — roughly 3× the real per-grade figure. Column assignments
    solved against them were solved against fictitious headroom.
+5. **Five Grade 10 rows in the 2026 workbook share a duplicate student ID.**
+   Dedupe before trusting Gr10 fixtures built off raw row counts.
+6. **GOVENDER covers three distinct people; WYLIE covers two**, in the
+   teacher data. Rebuilt `TT<year>.xlsx` files split them (GOVENDER_K,
+   GOVENDER_L, WYLIE_C, WYLIE_Z); legacy files contain phantom
+   double-bookings until disambiguated this way.
+7. **The 2026 teacher table in the original JSON export is a stale copy of
+   2025's.** Never source teacher identity from that table — reconstruct
+   from section keys instead.
+8. **Warm-starting the solver from a prior year's timetable is rejected.**
+   Year-to-year cell-placement Jaccard similarity is only ~0.19 despite
+   stable structure (columns, bands, M-values), and a warm start biases the
+   solver toward defending last year's teacher count — exactly the number
+   Phase 4 is trying to minimise. If hints are wanted, they must come from
+   Phase 2's own heuristic placements (`AddHint`), never from a prior year.
+   See `docs/explorations/warm-start.md`.
 
 ## Established structure
 
@@ -324,12 +355,15 @@ guided-coding mode). Done and verified against fixtures:
 * `tests/test_roster.py`: fixture tests for `parse_student` on both
   `Phase01_2026.xlsx` (99/90/81) and `Phase01_2025.xlsx` (89/77/98).
 
+Phases 3–5 have been explored analytically (CP-SAT timings, model shape,
+repair strategy) — see `docs/explorations/`. **Nothing beyond Phase 2 exists
+as code**; do not treat exploration results as implemented behaviour.
+
 Next concrete steps, in order:
-1. **Consolidate `solver-docs/` into `docs/`** — user has been brainstorming
-   in a separate `solver-docs/` folder; fold it into `docs/` so `docs/` becomes
-   the single LLM-readable wiki of record for all attempts and ideas on this
-   project (not just the current approach). Do this before adding more new
-   docs elsewhere.
+1. ~~Consolidate `solver-docs/` into `docs/`~~ — **done 2026-07-26**:
+   `docs/explorations/` and `docs/archive/BRAINSTORM.md` added, this file and
+   `docs/PLAN.md` merged with the staging draft's corrections, `solver-docs/`
+   deleted. `docs/` is now the single record for this project.
 2. **Git remote/sharing setup** — get this repo onto a shared source (e.g.
    GitHub) so this CLI session ("gremlin"), and the user's claude.ai Projects
    session ("claude"), both read from the same repo/docs instead of drifting.
