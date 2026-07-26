@@ -1,5 +1,6 @@
 CLASS_CAP = 25
 UNIVERSAL = frozenset({"EN", "LO", "PE", "MA", "ML"})
+BAND = frozenset({"MA", "PE", "LO", "ML"})
 
 SUBJECT_M_GRADE = {
       ("GE", 8): 3, ("GE", 9): 3,

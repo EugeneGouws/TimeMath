@@ -9,12 +9,6 @@ class Student:
     grade: int
     subjects: frozenset[str]
 
-@dataclass(frozen = True)
-class Section:
-    subject: str
-    gr: int
-
-
 # functions------------------------------------
 def parse_student(path: str) -> list[Student]:
     wb = load_workbook(path, data_only=True)
@@ -109,5 +103,3 @@ def baskets(students: list[Student], gr: int) -> dict[frozenset[str], frozenset[
     for s in table:
         result[s] = frozenset(table[s])
     return result
-
-
