@@ -24,6 +24,13 @@ import is the *concept* of `ClashDetector` as an independent verifier
 sharing no code with the solver. Do not pull suite context into this
 project.
 
+**`E:\timewiki` holds cross-project history** — prior attempts, dead ends,
+brainstorm sessions, legacy suite context. This file stays authoritative for
+current build state; check the wiki for "what did we try before and why did
+it fail" (e.g. the five prior failed attempts, TimeEduSuite internals).
+Query pattern: read `E:\timewiki\index.md` first, drill into the 1-2
+relevant entity/concept pages — cheap, don't dump the whole wiki.
+
 ## Provenance of every fact below
 
 Three tiers. Do not conflate them.
@@ -351,9 +358,31 @@ in qualification format. The exception rule is explicit. Phase 2 is designed and
 
 Python work in progress (PyCharm, Python 3.11, venv; user writes all code —
 guided-coding mode). Done and verified against fixtures:
-* `roster.py`: `Student` dataclass, `parse_student(path)`, `existence(students)`.
+* `roster.py`: `Student` dataclass, `parse_student(path)`, `existence(students)`,
+  `enrol(students, gr) -> dict[str, frozenset[int]]` (subject → student ids in
+  that grade), `floors(students, gr, cap=CLASS_CAP) -> dict[str, int]` (built on
+  top of `enrol`: `ceil(len(ids)/cap)` per subject), `baskets(students, gr) ->
+  dict[frozenset[str], frozenset[int]]` (key = `student.subjects - UNIVERSAL`,
+  value = student ids with that exact basket).
+* `constants.py`: `CLASS_CAP = 25`, `UNIVERSAL = frozenset({"EN","LO","PE","MA","ML"})`,
+  and `getM(subject, grade) -> int` — two-tier lookup (`SUBJECT_M_GRADE` junior
+  overrides for grades 8–9, else `SUBJECT_M` base table), **raises `ValueError`
+  on unknown code** (no silent default — see Corrections item 3 above).
+  Cross-checked against `E:\TimeEduSuite\core\src\lessoninfo.cpp::getM` (same
+  values); that file is reference-only for value comparison, not a dependency —
+  its own `SUBJECT_M.value(code, 7)` fallback is the exact bug being avoided
+  here, do not port its lookup logic.
+* Eyeballed `floors` across Gr10–12, both 2025 and 2026 workbooks, incl. the
+  ED Gr12 2026 boundary case (25/25 → floor 1 exactly) — looks correct.
+* `baskets` verified against Gr12 2026 fixture: 62 distinct baskets, max size 5,
+  size distribution `{3:1, 4:35, 5:26}`, ids sum to 81 (matches Gr12 2026 total).
+  No oversized-basket exception needed for this fixture (unlike 2025 Gr12 id 69).
+* `getM` verified: `getM("MA",12)==10`, `getM("LO",9)==3` (junior override),
+  `getM("LO",11)==2` (senior base), `getM("XX",12)` raises.
 * `tests/test_roster.py`: fixture tests for `parse_student` on both
-  `Phase01_2026.xlsx` (99/90/81) and `Phase01_2025.xlsx` (89/77/98).
+  `Phase01_2026.xlsx` (99/90/81) and `Phase01_2025.xlsx` (89/77/98). No test
+  yet for `enrol`/`floors`/`baskets`/`getM` — still eyeballed only, not
+  committed as a fixture.
 
 Phases 3–5 have been explored analytically (CP-SAT timings, model shape,
 repair strategy) — see `docs/explorations/`. **Nothing beyond Phase 2 exists
@@ -364,17 +393,29 @@ Next concrete steps, in order:
    `docs/explorations/` and `docs/archive/BRAINSTORM.md` added, this file and
    `docs/PLAN.md` merged with the staging draft's corrections, `solver-docs/`
    deleted. `docs/` is now the single record for this project.
-2. **Git remote/sharing setup** — get this repo onto a shared source (e.g.
-   GitHub) so this CLI session ("gremlin"), and the user's claude.ai Projects
-   session ("claude"), both read from the same repo/docs instead of drifting.
-   Prompt the user for their preferred remote/hosting choice; do not assume
-   GitHub vs another host.
-3. Finish `roster.py`: `floors(students, grade, cap=CLASS_CAP)` — signature
-   and imports (`math`, `constants as C`) are in place, body not yet written.
-4. `enrolment` and `baskets` in `roster.py` (agreed API, not started).
-5. `sections.py` (Section materialisation, 2.0) — needs `floors` + an M-value
-   table/function (`getM`), neither written yet.
-6. `tt_loader.py` (teacher qualifications) — needs `existence` from step above;
+2. ~~Git remote/sharing setup~~ — **done 2026-07-26**: repo is
+   `github.com/EugeneGouws/TimeMath`, **private**. `.gitignore` added
+   (excludes `/data/` — raw rosters carry real student/teacher names, must
+   never be committed; `Phase01_<year>.xlsx` is exempt, it's Id/Grade/subject
+   codes only, no names). Repo had briefly been public with two raw-roster
+   files committed in `first commit`; history was rewritten with
+   `git-filter-repo` to strip them and force-pushed — verified no trace
+   remains in any commit, before the visibility fix. Treat this as settled
+   policy going forward, not a one-off cleanup: names never leave `data/`;
+   student IDs are fine to commit/reference (hashed locally only).
+3. ~~Finish `roster.py`: `floors`~~ — **done**: `enrol` and `floors` both
+   written and verified (see Current state above).
+4. ~~`baskets(students, gr)` in `roster.py`~~ — **done**: written and verified
+   (see Current state above).
+5. ~~`getM(subject, grade)` in `constants.py`~~ — **done**: written, raises on
+   unknown code, verified (see Current state above). `sections.py`'s
+   dependencies (`floors` + `getM`) are now both satisfied.
+6. `sections.py` (Section materialisation, 2.0) — **next up**. Open question
+   raised but not resolved this session: for a floor-≥2 subject, how students
+   split across parallel sections (`idx` 0..floor-1) is undecided — ties into
+   the existing "Student-to-section assignment is undecided at Phase 2" open
+   question below. Decide this before or while writing `sections.py`.
+7. `tt_loader.py` (teacher qualifications) — needs `existence` from step above;
    no code yet.
 
 Remaining Phase 2 dependency: regenerate workbook pool sizes from `TT<year>.xlsx`

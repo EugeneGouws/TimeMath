@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from openpyxl import load_workbook
-import constants as C
+import constants as c
 import math
 
 @dataclass(frozen=True)
@@ -9,7 +9,13 @@ class Student:
     grade: int
     subjects: frozenset[str]
 
+@dataclass(frozen = True)
+class Section:
+    subject: str
+    gr: int
 
+
+# functions------------------------------------
 def parse_student(path: str) -> list[Student]:
     wb = load_workbook(path, data_only=True)
     ws = wb["Roster"]
@@ -27,11 +33,6 @@ def parse_student(path: str) -> list[Student]:
     for i in range(len(headers)):
         if headers[i] is not None and headers[i].startswith("S"):
             s_cols.append(i)
-
-    #print("headers:", headers)
-    #print("id_col:", id_col)
-    #print("gr_col:", gr_col)
-    #print("s_cols:", s_cols, "->", [headers[i] for i in s_cols])
 
     for row in ws.iter_rows(min_row=2):
         if row[id_col].value is None:
@@ -52,10 +53,9 @@ def parse_student(path: str) -> list[Student]:
         student = Student(id=s_id, grade=s_gr, subjects=frozenset(s_subjects))
         students.append(student)
 
-    #print(students[:3])
-
     return students
 
+#------------------------------------------------------------
 def existence(students: list[Student]) -> dict[str, frozenset[int]]:
     table = {}
     for student in students:
@@ -69,5 +69,45 @@ def existence(students: list[Student]) -> dict[str, frozenset[int]]:
         result[s] = frozenset(table[s])
     return result
 
-def floors(students: list[Student], grade: int, cap: int = C.CLASS_CAP) -> dict[str, int]:
-    
+#---------------------------------------------------------------
+def enrol(students: list[Student], gr: int) -> dict[str, frozenset[int]]:
+    table = {}
+    for student in students:
+        if student.grade != gr:
+            continue
+        for s in student.subjects:
+            if s not in table:
+                table[s] = set()
+            table[s].add(student.id)
+
+    result = {}
+    for s in table:
+        result[s] = frozenset(table[s])
+    return result
+
+#-----------------------------------------------------------
+def floors(students: list[Student], gr: int, cap: int = c.CLASS_CAP) -> dict[str, int]:
+    e = enrol(students, gr)
+
+    result = {}
+    for s in e:
+        result[s] = math.ceil(len(e[s]) / cap)
+    return result
+
+#----------------------------------------------------------
+def baskets(students: list[Student], gr: int) -> dict[frozenset[str], frozenset[int]]:
+    table = {}
+    for student in students:
+        if student.grade != gr:
+            continue
+        key = student.subjects - c.UNIVERSAL
+        if key not in table:
+            table[key] = set()
+        table[key].add(student.id)
+
+    result = {}
+    for s in table:
+        result[s] = frozenset(table[s])
+    return result
+
+
