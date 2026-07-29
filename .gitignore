@@ -1,15 +1,42 @@
-# Sensitive raw student/teacher data — contains real names, must never be
-# committed. Phase01_<year>.xlsx are NOT covered by this rule: they carry
-# only Id/Grade/subject codes (no names), are derived/anonymised working
-# fixtures, and are meant to be tracked (see CLAUDE.md/PLAN.md — the
-# workbook is the spec and the test fixture).
-/data/
+# What this repo tracks: the Python source, and nothing else.
+#
+# Everything below is deliberately excluded. Note that .gitignore only affects
+# UNTRACKED files -- anything already committed keeps being tracked until it is
+# removed from the index with `git rm --cached`. That is why these rules looked
+# like they were not working.
 
-# Excel lock files
+# --- real people's data. Never commit. -------------------------------------
+# Raw rosters and teacher files carry student and teacher names, and the
+# emitted timetable.json embeds teacher surnames in its lesson labels.
+data/
+
+# --- spreadsheets ----------------------------------------------------------
+# Including Phase01_<year>.xlsx, which was tracked previously.
+*.xlsx
+*.xls
+*.xlsm
 ~$*.xlsx
 
-# Python
-__pycache__/
-*.pyc
+# --- documentation and notes ----------------------------------------------
+# CLAUDE.md, README.md, docs/. See the note at the bottom of this file.
+*.md
+docs/
+
+# --- tests and generated output -------------------------------------------
+tests/
+out/
+
+# --- tooling and environments ---------------------------------------------
+.claude/
+.idea/
 .venv/
 venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# NOTE: with *.md and docs/ excluded, the project's written record (CLAUDE.md,
+# PLAN.md, PRODUCT.md) is NOT backed up by git. It exists only on this machine
+# and in E:\timewiki. Back it up some other way, or drop the *.md rule.
